@@ -186,7 +186,7 @@
                         text: 'Check out this native share demo!',
                         url: window.location.href
                     });
-                    showStatus(statusDiv, 'Shared successfully!', 'success');
+                    showStatus(statusDiv, 'Share dialog completed (may or may not have been shared)', 'success');
                 } catch (error) {
                     if (error.name === 'AbortError') {
                         showStatus(statusDiv, 'Share cancelled by user', 'info');
