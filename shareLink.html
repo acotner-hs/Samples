@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Native Share Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .share-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .share-item h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+
+        .share-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .share-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .fallback-btn {
+            background: #28a745;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .custom-share {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Native Share Demo</h1>
+        
+        <!-- Current Page Share -->
+        <div class="share-item">
+            <h3>Share Current Page</h3>
+            <button class="share-btn" onclick="shareCurrentPage()">Share This Page</button>
+            <button class="share-btn fallback-btn" onclick="copyToClipboard(window.location.href)">Copy Link</button>
+            <div id="current-status"></div>
+        </div>
+
+        <!-- Custom Content Share -->
+        <div class="share-item">
+            <h3>Share Custom Content</h3>
+            <input type="text" id="custom-title" placeholder="Title" value="Check out this awesome website!">
+            <textarea id="custom-text" placeholder="Description">I found this really cool demo of native web sharing capabilities. You should check it out!</textarea>
+            <input type="url" id="custom-url" placeholder="URL" value="https://example.com">
+            
+            <button class="share-btn" onclick="shareCustomContent()">Share Custom</button>
+            <button class="share-btn fallback-btn" onclick="copyCustomToClipboard()">Copy to Clipboard</button>
+            <div id="custom-status"></div>
+        </div>
+
+        <!-- File Share (if supported) -->
+        <div class="share-item">
+            <h3>Share File</h3>
+            <input type="file" id="file-input" accept="image/*,text/*,.pdf">
+            <button class="share-btn" onclick="shareFile()">Share Selected File</button>
+            <div id="file-status"></div>
+        </div>
+
+        <!-- Share Support Info -->
+        <div class="share-item">
+            <h3>Browser Support</h3>
+            <div id="support-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check if Web Share API is supported
+        function checkShareSupport() {
+            const supportInfo = document.getElementById('support-info');
+            
+            if (navigator.share) {
+                supportInfo.innerHTML = '<div class="status success">✅ Your browser supports the Web Share API!</div>';
+            } else {
+                supportInfo.innerHTML = '<div class="status info">ℹ️ Web Share API not supported. Fallback methods will be used.</div>';
+            }
+
+            // Check if sharing files is supported
+            if (navigator.canShare) {
+                supportInfo.innerHTML += '<div class="status success">✅ File sharing is supported!</div>';
+            } else if (navigator.share) {
+                supportInfo.innerHTML += '<div class="status info">ℹ️ Basic sharing supported, but file sharing may not be available.</div>';
+            }
+        }
+
+        // Share current page
+        async function shareCurrentPage() {
+            const statusDiv = document.getElementById('current-status');
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: document.title,
+                        text: 'Check out this native share demo!',
+                        url: window.location.href
+                    });
+                    showStatus(statusDiv, 'Shared successfully!', 'success');
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        showStatus(statusDiv, 'Share cancelled by user', 'info');
+                    } else {
+                        showStatus(statusDiv, 'Error sharing: ' + error.message, 'error');
+                    }
+                }
+            } else {
+                showStatus(statusDiv, 'Web Share API not supported. Link copied to clipboard instead.', 'info');
+                copyToClipboard(window.location.href);
+            }
+        }
+
+        // Share custom content
+        async function shareCustomContent() {
+            const statusDiv = document.getElementById('custom-status');
+            const title = document.getElementById('custom-title').value;
+            const text = document.getElementById('custom-text').value;
+            const url = document.getElementById('custom-url').value;
+
+            if (navigator.share) {
+                try {
+                    const shareData = {};
+                    if (title) shareData.title = title;
+                    if (text) shareData.text = text;
+                    if (url) shareData.url = url;
+
+                    await navigator.share(shareData);
+                    showStatus(statusDiv, 'Custom content shared successfully!', 'success');
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        showStatus(statusDiv, 'Share cancelled by user', 'info');
+                    } else {
+                        showStatus(statusDiv, 'Error sharing: ' + error.message, 'error');
+                    }
+                }
+            } else {
+                showStatus(statusDiv, 'Web Share API not supported. Content copied to clipboard instead.', 'info');
+                copyCustomToClipboard();
+            }
+        }
+
+        // Share file
+        async function shareFile() {
+            const statusDiv = document.getElementById('file-status');
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showStatus(statusDiv, 'Please select a file first', 'error');
+                return;
+            }
+
+            if (navigator.share && navigator.canShare) {
+                const shareData = {
+                    files: [file],
+                    title: 'Shared file: ' + file.name
+                };
+
+                if (navigator.canShare(shareData)) {
+                    try {
+                        await navigator.share(shareData);
+                        showStatus(statusDiv, 'File shared successfully!', 'success');
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            showStatus(statusDiv, 'Share cancelled by user', 'info');
+                        } else {
+                            showStatus(statusDiv, 'Error sharing file: ' + error.message, 'error');
+                        }
+                    }
+                } else {
+                    showStatus(statusDiv, 'This file type cannot be shared', 'error');
+                }
+            } else {
+                showStatus(statusDiv, 'File sharing not supported in this browser', 'error');
+            }
+        }
+
+        // Fallback: Copy to clipboard
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                console.log('Copied to clipboard');
+            } catch (error) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                console.log('Copied to clipboard (fallback)');
+            }
+        }
+
+        // Copy custom content to clipboard
+        function copyCustomToClipboard() {
+            const title = document.getElementById('custom-title').value;
+            const text = document.getElementById('custom-text').value;
+            const url = document.getElementById('custom-url').value;
+            
+            const content = `${title}\n${text}\n${url}`;
+            copyToClipboard(content);
+            
+            const statusDiv = document.getElementById('custom-status');
+            showStatus(statusDiv, 'Content copied to clipboard!', 'success');
+        }
+
+        // Show status message
+        function showStatus(element, message, type) {
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 3000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', checkShareSupport);
+    </script>
+</body>
+</html>
