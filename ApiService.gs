@@ -9,7 +9,8 @@ function getProfile(email) {
     method: 'get',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${BEARER_TOKEN}`
+      'Authorization': `Bearer ${BEARER_TOKEN}`,
+      'apiKey': PARTNER_API_KEY
     },
     muteHttpExceptions: true
   };
@@ -19,7 +20,26 @@ function getProfile(email) {
     const responseCode = response.getResponseCode();
 
     if (responseCode === 200) {
-      return JSON.parse(response.getContentText());
+      const result = JSON.parse(response.getContentText());
+
+      // Handle the paginated response structure
+      if (result.data && Array.isArray(result.data)) {
+        // Check if any profiles were found
+        if (result.query && result.query.total === 0) {
+          return null; // No profiles found
+        }
+
+        // Return the first profile from the data array
+        if (result.data.length > 0) {
+          return result.data[0];
+        } else {
+          return null; // Empty data array
+        }
+      }
+
+      // Fallback: if response doesn't match expected structure, return as-is
+      return result;
+
     } else if (responseCode === 404) {
       return null; // Profile not found
     } else if (responseCode === 401) {
@@ -39,7 +59,11 @@ function getProfile(email) {
 }
 
 function createProfile(loData, rowNum, logSheet) {
+  // Generate a new UUID for the aggregateId
+  const newAggregateId = Utilities.getUuid();
+
   const payload = {
+    aggregateId: newAggregateId,
     role: 'MLO',
     firstName: loData.firstName,
     lastName: loData.lastName,
@@ -67,11 +91,14 @@ function createProfile(loData, rowNum, logSheet) {
     }
   };
 
+  // Always log the payload
+  Logger.log(`[CREATE] Payload for ${loData.email}:\n${JSON.stringify(payload, null, 2)}`);
+
   if (DRY_RUN) {
     // Simulate the create operation
     const payloadPreview = JSON.stringify(payload, null, 2);
     logToSheet(logSheet, loData.email, 'Create (Simulated)', 'Success',
-      `🔍 DRY RUN: Would create profile with payload:\n${payloadPreview.substring(0, 500)}...`, rowNum);
+      `🔍 DRY RUN: Would create profile with aggregateId ${newAggregateId}. Payload:\n${payloadPreview.substring(0, 1500)}...`, rowNum);
     return '[DRY RUN] added';
   }
 
@@ -79,18 +106,19 @@ function createProfile(loData, rowNum, logSheet) {
     method: 'post',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${BEARER_TOKEN}`
+      'Authorization': `Bearer ${BEARER_TOKEN}`,
+      'apiKey': PARTNER_API_KEY
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
 
   try {
-    const response = UrlFetchApp.fetch(ENDPOINTS.CREATE_PROFILE, options);
+    const response = UrlFetchApp.fetch(ENDPOINTS.PROFILES, options);
     const responseCode = response.getResponseCode();
 
     if (responseCode === 200 || responseCode === 201) {
-      logToSheet(logSheet, loData.email, 'Create', 'Success', 'Profile created successfully', rowNum);
+      logToSheet(logSheet, loData.email, 'Create', 'Success', `Profile created with aggregateId: ${newAggregateId}`, rowNum);
       return 'added';
     } else {
       throw new Error(`API error ${responseCode}: ${response.getContentText()}`);
@@ -101,8 +129,10 @@ function createProfile(loData, rowNum, logSheet) {
   }
 }
 
-function updateProfile(aggregateId, loData, mergedData, rowNum, logSheet) {
+function updateProfile(existingProfile, loData, mergedData, rowNum, logSheet) {
   const payload = {
+    aggregateId: existingProfile.aggregateId, // Use existing aggregateId
+    role: 'MLO',
     firstName: loData.firstName,
     lastName: loData.lastName,
     email: loData.email,
@@ -116,28 +146,30 @@ function updateProfile(aggregateId, loData, mergedData, rowNum, logSheet) {
     data: mergedData
   };
 
+  // Always log the payload
+  Logger.log(`[UPDATE] Payload for ${loData.email}:\n${JSON.stringify(payload, null, 2)}`);
+
   if (DRY_RUN) {
     // Simulate the update operation
     const payloadPreview = JSON.stringify(payload, null, 2);
     logToSheet(logSheet, loData.email, 'Update (Simulated)', 'Success',
-      `🔍 DRY RUN: Would update profile ${aggregateId} with payload:\n${payloadPreview.substring(0, 500)}...`, rowNum);
+      `🔍 DRY RUN: Would update profile ${existingProfile.aggregateId}. Payload:\n${payloadPreview.substring(0, 1500)}...`, rowNum);
     return true;
   }
 
-  const url = ENDPOINTS.UPDATE_PROFILE(aggregateId);
-
   const options = {
-    method: 'put',
+    method: 'post', // POST for update (not PUT)
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${BEARER_TOKEN}`
+      'Authorization': `Bearer ${BEARER_TOKEN}`,
+      'apiKey': PARTNER_API_KEY
     },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
 
   try {
-    const response = UrlFetchApp.fetch(url, options);
+    const response = UrlFetchApp.fetch(ENDPOINTS.PROFILES, options);
     const responseCode = response.getResponseCode();
 
     if (responseCode === 200) {

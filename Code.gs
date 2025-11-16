@@ -37,6 +37,15 @@ function processMLOProfiles() {
     colIndices[key] = index;
   }
 
+  // Handle "Update Results" column - create if doesn't exist
+  if (colIndices.RESULT === -1) {
+    // Column doesn't exist, add it
+    const lastCol = headers.length;
+    inputSheet.getRange(1, lastCol + 1).setValue(COLUMNS.RESULT);
+    colIndices.RESULT = lastCol; // 0-indexed
+    Logger.log(`Created new column "${COLUMNS.RESULT}" at position ${lastCol + 1}`);
+  }
+
   // Process each row (skip header)
   for (let i = 1; i < data.length; i++) {
     const rowNum = i + 1;
@@ -49,18 +58,18 @@ function processMLOProfiles() {
         firstName: row[colIndices.LO_FIRST_NAME],
         lastName: row[colIndices.LO_LAST_NAME],
         phone: row[colIndices.LO_PHONE],
-        email: row[colIndices.LO_EMAIL],
+        email: String(row[colIndices.LO_EMAIL]).toLowerCase(),
         nmlsId: row[colIndices.NMLS_ID],
         mloStatus: row[colIndices.MLO_STATUS],
         lm: {
           firstName: row[colIndices.LM_FIRST_NAME],
           lastName: row[colIndices.LM_LAST_NAME],
-          email: row[colIndices.LM_EMAIL]
+          email: String(row[colIndices.LM_EMAIL]).toLowerCase()
         },
         slm: {
           firstName: row[colIndices.SLM_FIRST_NAME],
           lastName: row[colIndices.SLM_LAST_NAME],
-          email: row[colIndices.SLM_EMAIL]
+          email: String(row[colIndices.SLM_EMAIL]).toLowerCase()
         }
       };
 
@@ -68,17 +77,13 @@ function processMLOProfiles() {
       const result = processRow(loData, rowNum, logSheet);
 
       // Update result column
-      if (colIndices.RESULT !== -1) {
-        inputSheet.getRange(rowNum, colIndices.RESULT + 1).setValue(result);
-      }
+      inputSheet.getRange(rowNum, colIndices.RESULT + 1).setValue(result);
 
     } catch (error) {
       const errorMsg = `error: ${error.message}`;
       const emailForLog = loData && loData.email ? loData.email : `Row ${rowNum}`;
 
-      if (colIndices.RESULT !== -1) {
-        inputSheet.getRange(rowNum, colIndices.RESULT + 1).setValue(errorMsg);
-      }
+      inputSheet.getRange(rowNum, colIndices.RESULT + 1).setValue(errorMsg);
       logToSheet(logSheet, emailForLog, 'Error', 'Failed', error.message, rowNum);
     }
 
@@ -127,7 +132,7 @@ function processRow(loData, rowNum, logSheet) {
   const existingProfile = getProfile(loData.email);
 
   if (!existingProfile) {
-    // Step 2: Create new profile (404 - not found)
+    // Step 2: Create new profile (not found)
     logToSheet(logSheet, loData.email, 'Lookup', 'Success', 'Profile not found, will create', rowNum);
     return createProfile(loData, rowNum, logSheet);
   }
@@ -225,7 +230,7 @@ function compareAndUpdate(loData, existingProfile, rowNum, logSheet) {
   const mergedData = deepMerge(existingData, newData);
 
   // Perform update
-  const success = updateProfile(existingProfile.aggregateId, loData, mergedData, rowNum, logSheet);
+  const success = updateProfile(existingProfile, loData, mergedData, rowNum, logSheet);
 
   if (success) {
     const details = `Updated fields: ${changedFields.join(', ')}`;

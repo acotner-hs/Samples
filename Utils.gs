@@ -61,4 +61,7 @@ function isObject(item) {
 function logToSheet(logSheet, email, action, status, details, rowNum) {
   const timestamp = new Date();
   logSheet.appendRow([timestamp, email, action, status, details, rowNum]);
+
+  // Console log every log sheet entry
+  Logger.log(`[${timestamp.toISOString()}] ${email} | ${action} | ${status} | ${details} | Row ${rowNum}`);
 }

@@ -42,7 +42,7 @@ This Google Apps Script project manages Mortgage Loan Officer (MLO) profiles via
    - `slm_first_name`
    - `slm_last_name`
    - `slm_email`
-   - `Result of last update` (automatically populated)
+   - `Update Results` (automatically populated, will be created if doesn't exist)
 
 ### 2. Create Apps Script Project
 
@@ -61,7 +61,7 @@ In `Config.gs`, update the following:
 
 ```javascript
 // Set environment (BETA or PROD)
-const ENVIRONMENT = 'PROD';
+const ENVIRONMENT = 'BETA';
 
 // Set dry run mode (true for testing, false for actual execution)
 const DRY_RUN = true;
@@ -70,7 +70,7 @@ const DRY_RUN = true;
 const BEARER_TOKEN = 'your-bearer-token-here';
 
 // Update sheet name if different
-const INPUT_SHEET_NAME = 'Sheet1';
+const INPUT_SHEET_NAME = 'LO-Hierarchy';
 ```
 
 ### 4. Authorize the Script
@@ -93,11 +93,11 @@ const INPUT_SHEET_NAME = 'Sheet1';
    - Update existing profiles if data has changed
    - Skip profiles with no changes
    - Log all operations to the "Log" sheet
-   - Update the "Result of last update" column
+   - Update the "Update Results" column
 
 ### Understanding Results
 
-The "Result of last update" column will show:
+The "Update Results" column will show:
 - `added` - New profile created
 - `updated: field1, field2, ...` - Profile updated with changed fields
 - `no update needed` - Profile exists and matches
@@ -124,29 +124,37 @@ const ENVIRONMENT = 'PROD'; // or 'BETA'
 ```
 
 The URLs will automatically update:
-- **BETA**: `https://homestory-connect.beta-api.homestoryrewards.com/api/v1.0`
-- **PROD**: `https://homestory-connect.api.homestoryrewards.com/api/v1.0`
+- **BETA**: `https://homestory-connect.beta-api.homestoryrewards.com`
+- **PROD**: `https://homestory-connect.api.homestoryrewards.com`
 
 ## API Integration
 
 ### Endpoints
 
-- **GET Profile**: `GET /partner/{partnerId}/profiles/{email}`
-- **CREATE Profile**: `POST /partner/{partnerId}/profiles`
-- **UPDATE Profile**: `PUT /partner/{partnerId}/profiles/{aggregateId}`
+- **GET Profile**: `GET /api/v1.0/partner/{partnerId}/profiles?email={email}` (query parameter)
+- **CREATE Profile**: `POST /api/v1.0/partner/{partnerId}/profiles`
+- **UPDATE Profile**: `POST /api/v1.0/partner/{partnerId}/profiles` (same endpoint as CREATE, uses aggregateId in payload)
 
 ### Authentication
 
-The script uses Bearer token authentication. Set your token in `Config.gs`:
+The script uses Bearer token authentication plus an API key. Set both in `Config.gs`:
 
 ```javascript
 const BEARER_TOKEN = 'your-token-here';
+const PARTNER_API_KEY = 'your-api-key-here';
 ```
+
+Both are sent as headers:
+- `Authorization: Bearer {token}`
+- `apiKey: {api-key}`
 
 ### Profile Payload Structure
 
+Both CREATE and UPDATE use the same payload structure. For CREATE, a new UUID is generated for `aggregateId`. For UPDATE, the existing `aggregateId` is used.
+
 ```json
 {
+  "aggregateId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "role": "MLO",
   "firstName": "John",
   "lastName": "Doe",
@@ -184,6 +192,8 @@ All operations are logged to the "Log" sheet with:
 - **Status**: Success, Failed, In Progress
 - **Details**: Additional information about the operation
 - **Row Number**: Source row in the input sheet
+
+Additionally, all log entries are written to the Apps Script console using `Logger.log()` for debugging purposes. API payloads for CREATE and UPDATE operations are also logged to the console.
 
 ## Phone Number Normalization
 
@@ -240,5 +250,16 @@ For API-related questions, contact your HomeStory Rewards API administrator.
 For Google Apps Script questions, refer to the [Apps Script documentation](https://developers.google.com/apps-script).
 
 ## Version History
+
+- **v1.1** - Updated API integration
+  - Changed GET endpoint to use query parameter (?email=)
+  - Unified CREATE and UPDATE to use same POST endpoint
+  - Added aggregateId generation for new profiles
+  - Added apiKey header authentication
+  - Added console logging for all operations
+  - Email addresses now normalized to lowercase
+  - Auto-create "Update Results" column if missing
+  - Handle paginated API responses
+  - Default sheet name changed to 'LO-Hierarchy'
 
 - **v1.0** - Initial release with full CRUD operations, dry run mode, and comprehensive logging
