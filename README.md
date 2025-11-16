@@ -15,14 +15,25 @@ This Google Apps Script project manages Mortgage Loan Officer (MLO) profiles via
 
 ## Project Structure
 
+### Main Project
 ```
 ├── Code.gs           # Main processing logic and menu functions
 ├── Config.gs         # Configuration settings (environment, API keys, etc.)
-├── ApiService.gs     # API integration functions (GET, CREATE, UPDATE)
-├── Utils.gs          # Utility functions (phone normalization, logging, etc.)
+├── ApiService.gs     # API integration wrapper (calls library functions)
+├── Utils.gs          # Utility wrapper (calls library functions + logging)
 ├── appsscript.json   # Apps Script manifest file
 └── README.md         # This file
 ```
+
+### Shared Library (library/)
+```
+├── ApiClient.gs      # Reusable API client functions
+├── Utils.gs          # Reusable utility functions
+├── appsscript.json   # Library manifest file
+└── README.md         # Library documentation
+```
+
+**Note:** This project uses a shared library for API and utility functions. The library can be deployed once and reused across multiple projects.
 
 ## Setup Instructions
 
@@ -44,7 +55,26 @@ This Google Apps Script project manages Mortgage Loan Officer (MLO) profiles via
    - `slm_email`
    - `Update Results` (automatically populated, will be created if doesn't exist)
 
-### 2. Create Apps Script Project
+### 2. Deploy the Shared Library (First Time Only)
+
+**If you haven't deployed the library yet:**
+
+1. Go to [script.google.com](https://script.google.com)
+2. Click **New Project**
+3. Name it "MLO Profile Library"
+4. Create the library files from the `library/` folder:
+   - `ApiClient.gs`
+   - `Utils.gs`
+   - Update `appsscript.json`
+5. Click **Deploy > New deployment**
+6. Select type: **Library**
+7. Add description: "MLO Profile Management Library v1.0"
+8. Click **Deploy**
+9. **Copy the Script ID** (you'll need this in the next step)
+
+**See `library/README.md` for detailed library documentation.**
+
+### 3. Create Apps Script Project
 
 1. In your Google Sheet, go to **Extensions > Apps Script**
 2. Delete the default `Code.gs` content
@@ -55,7 +85,16 @@ This Google Apps Script project manages Mortgage Loan Officer (MLO) profiles via
    - `Utils.gs`
 4. Update the `appsscript.json` file (click the gear icon ⚙️ to access it)
 
-### 3. Configure the Script
+### 4. Add the Library to Your Project
+
+1. In your Apps Script project, click the **+** next to **Libraries**
+2. Paste the **Script ID** from step 2
+3. Click **Look up**
+4. Select the latest version
+5. Set the **Identifier** to `MLOProfileLib`
+6. Click **Add**
+
+### 5. Configure the Script
 
 In `Config.gs`, update the following:
 
@@ -73,13 +112,13 @@ const BEARER_TOKEN = 'your-bearer-token-here';
 const INPUT_SHEET_NAME = 'LO-Hierarchy';
 ```
 
-### 4. Authorize the Script
+### 6. Authorize the Script
 
 1. Save the script
 2. Refresh your Google Sheet
 3. You'll see a new menu: **MLO Processing**
 4. Click **MLO Processing > Process All Rows**
-5. Authorize the script when prompted
+5. Authorize the script when prompted (it will request permissions for the library too)
 
 ## Usage
 
@@ -243,13 +282,49 @@ The script handles:
 - This is expected! DRY_RUN mode simulates operations
 - Set `DRY_RUN = false` to execute actual operations
 
+### "MLOProfileLib is not defined" error
+- The shared library hasn't been added to your project
+- Follow step 4 in Setup Instructions to add the library
+- Make sure the identifier is exactly `MLOProfileLib`
+- Verify the library is enabled in your project settings
+
 ## Support
 
 For API-related questions, contact your HomeStory Rewards API administrator.
 
 For Google Apps Script questions, refer to the [Apps Script documentation](https://developers.google.com/apps-script).
 
+## Architecture
+
+This project uses a **shared library architecture** for better code reusability:
+
+- **Main Project**: Contains business logic, configuration, and sheet-specific processing
+- **Shared Library (MLOProfileLib)**: Contains reusable API client and utility functions
+
+### Benefits:
+- **Reusability**: Deploy library once, use in multiple projects
+- **Maintainability**: Update library independently from projects
+- **Separation of Concerns**: Business logic separate from infrastructure code
+- **Versioning**: Projects can use different library versions
+
+### Library Functions Used:
+- `MLOProfileLib.getProfile()` - API call to get profile
+- `MLOProfileLib.createProfile()` - API call to create profile
+- `MLOProfileLib.updateProfile()` - API call to update profile
+- `MLOProfileLib.compareProfiles()` - Compare profile data
+- `MLOProfileLib.buildMergedData()` - Build merged data object
+- `MLOProfileLib.normalizePhone()` - Phone number normalization
+- `MLOProfileLib.deepMerge()` - Deep object merging
+
 ## Version History
+
+- **v2.0** - Refactored to use shared library architecture
+  - Extracted API client functions to shared library
+  - Extracted utility functions to shared library
+  - Main project now uses library wrappers
+  - Added comprehensive library documentation
+  - Improved code modularity and reusability
+  - Simplified main project code
 
 - **v1.1** - Updated API integration
   - Changed GET endpoint to use query parameter (?email=)

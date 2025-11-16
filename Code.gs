@@ -147,61 +147,8 @@ function processRow(loData, rowNum, logSheet) {
 // ============================================
 
 function compareAndUpdate(loData, existingProfile, rowNum, logSheet) {
-  const changedFields = [];
-
-  // Compare root level fields
-  if (existingProfile.firstName !== loData.firstName) {
-    changedFields.push('firstName');
-  }
-  if (existingProfile.lastName !== loData.lastName) {
-    changedFields.push('lastName');
-  }
-  if (existingProfile.email !== loData.email) {
-    changedFields.push('email');
-  }
-
-  // Normalize existing phone for comparison
-  const existingPhone = normalizePhoneForComparison(existingProfile.phone);
-  const newPhone = normalizePhoneForComparison(loData.phone);
-  if (existingPhone !== newPhone) {
-    changedFields.push('phone');
-  }
-
-  // Get existing data object
-  const existingData = existingProfile.data || {};
-
-  // Compare data fields
-  if (String(existingData.nmlsid) !== String(loData.nmlsId)) {
-    changedFields.push('nmlsid');
-  }
-
-  if (existingData.mloStatus !== loData.mloStatus) {
-    changedFields.push('mloStatus');
-  }
-
-  // Compare LM fields
-  const existingLm = existingData.lm || {};
-  if (existingLm.firstName !== loData.lm.firstName) {
-    changedFields.push('lm.firstName');
-  }
-  if (existingLm.lastName !== loData.lm.lastName) {
-    changedFields.push('lm.lastName');
-  }
-  if (existingLm.email !== loData.lm.email) {
-    changedFields.push('lm.email');
-  }
-
-  // Compare SLM fields
-  const existingSlm = existingData.slm || {};
-  if (existingSlm.firstName !== loData.slm.firstName) {
-    changedFields.push('slm.firstName');
-  }
-  if (existingSlm.lastName !== loData.slm.lastName) {
-    changedFields.push('slm.lastName');
-  }
-  if (existingSlm.email !== loData.slm.email) {
-    changedFields.push('slm.email');
-  }
+  // Use library function to compare profiles
+  const changedFields = MLOProfileLib.compareProfiles(existingProfile, loData);
 
   // If no changes, return early
   if (changedFields.length === 0) {
@@ -210,24 +157,8 @@ function compareAndUpdate(loData, existingProfile, rowNum, logSheet) {
     return DRY_RUN ? '[DRY RUN] no update needed' : 'no update needed';
   }
 
-  // Build new data object with deep merge
-  const newData = {
-    nmlsid: String(loData.nmlsId),
-    mloStatus: loData.mloStatus,
-    lm: {
-      firstName: loData.lm.firstName,
-      lastName: loData.lm.lastName,
-      email: loData.lm.email
-    },
-    slm: {
-      firstName: loData.slm.firstName,
-      lastName: loData.slm.lastName,
-      email: loData.slm.email
-    }
-  };
-
-  // Deep merge to preserve other fields in data object
-  const mergedData = deepMerge(existingData, newData);
+  // Use library function to build merged data
+  const mergedData = MLOProfileLib.buildMergedData(existingProfile.data, loData);
 
   // Perform update
   const success = updateProfile(existingProfile, loData, mergedData, rowNum, logSheet);

@@ -1,63 +1,33 @@
 // ============================================
-// UTILITY FUNCTIONS
+// UTILITY FUNCTIONS - LIBRARY WRAPPER
 // ============================================
+// This file wraps the MLOProfileLib library utility functions
+// and provides project-specific utilities
 
+// NOTE: This file assumes you have added the MLOProfileLib library to this project
+// If the library is not yet added, you'll need to:
+// 1. Deploy the library project
+// 2. Add it to this project via Resources > Libraries
+// 3. Set the identifier to "MLOProfileLib"
+
+// Wrapper functions for library utilities
 function normalizePhone(phone) {
-  if (!phone) {
-    throw new Error('Phone number is required');
-  }
-
-  // Convert to string and strip all non-digit characters
-  let digits = String(phone).replace(/\D/g, '');
-
-  // If starts with 1 and has 11 digits, drop the leading 1
-  if (digits.length === 11 && digits.charAt(0) === '1') {
-    digits = digits.substring(1);
-  }
-
-  // Should now have 10 digits
-  if (digits.length !== 10) {
-    throw new Error(`Phone must be 10 digits after normalization. Got ${digits.length} digits: ${digits}`);
-  }
-
-  return '+1' + digits;
+  return MLOProfileLib.normalizePhone(phone);
 }
 
 function normalizePhoneForComparison(phone) {
-  if (!phone) return '';
-  // Strip all non-digits for comparison
-  let digits = String(phone).replace(/\D/g, '');
-  // Remove leading 1 if present
-  if (digits.length === 11 && digits.charAt(0) === '1') {
-    digits = digits.substring(1);
-  }
-  return digits;
+  return MLOProfileLib.normalizePhoneForComparison(phone);
 }
 
 function deepMerge(target, source) {
-  const output = Object.assign({}, target);
-
-  if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach(key => {
-      if (isObject(source[key])) {
-        if (!(key in target)) {
-          Object.assign(output, { [key]: source[key] });
-        } else {
-          output[key] = deepMerge(target[key], source[key]);
-        }
-      } else {
-        Object.assign(output, { [key]: source[key] });
-      }
-    });
-  }
-
-  return output;
+  return MLOProfileLib.deepMerge(target, source);
 }
 
 function isObject(item) {
-  return item && typeof item === 'object' && !Array.isArray(item);
+  return MLOProfileLib.isObject(item);
 }
 
+// Project-specific utility function (not in library)
 function logToSheet(logSheet, email, action, status, details, rowNum) {
   const timestamp = new Date();
   logSheet.appendRow([timestamp, email, action, status, details, rowNum]);
