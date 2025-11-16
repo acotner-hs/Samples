@@ -1,0 +1,244 @@
+# MLO Profile Management - Google Apps Script
+
+This Google Apps Script project manages Mortgage Loan Officer (MLO) profiles via API integration with the HomeStory Rewards platform.
+
+## Features
+
+- **Profile Management**: Create and update MLO profiles via REST API
+- **Bulk Processing**: Process multiple profiles from Google Sheets
+- **Environment Support**: Switch between BETA and PROD environments
+- **Dry Run Mode**: Test operations without making actual API calls
+- **Comprehensive Logging**: Detailed logging of all operations to a Log sheet
+- **Field Comparison**: Smart comparison of existing vs new data to minimize unnecessary updates
+- **Phone Normalization**: Automatic phone number formatting to +1XXXXXXXXXX format
+- **Error Handling**: Robust error handling with detailed error messages
+
+## Project Structure
+
+```
+├── Code.gs           # Main processing logic and menu functions
+├── Config.gs         # Configuration settings (environment, API keys, etc.)
+├── ApiService.gs     # API integration functions (GET, CREATE, UPDATE)
+├── Utils.gs          # Utility functions (phone normalization, logging, etc.)
+├── appsscript.json   # Apps Script manifest file
+└── README.md         # This file
+```
+
+## Setup Instructions
+
+### 1. Create a Google Spreadsheet
+
+1. Create a new Google Sheet or use an existing one
+2. Set up the input sheet with the following columns (you can change the sheet name in Config.gs):
+   - `lo_first_name`
+   - `lo_last_name`
+   - `lo_phone_number`
+   - `lo_email`
+   - `nmls_id`
+   - `mlo_status` (must be "active" or "inactive")
+   - `lm_first_name`
+   - `lm_last_name`
+   - `lm_email`
+   - `slm_first_name`
+   - `slm_last_name`
+   - `slm_email`
+   - `Result of last update` (automatically populated)
+
+### 2. Create Apps Script Project
+
+1. In your Google Sheet, go to **Extensions > Apps Script**
+2. Delete the default `Code.gs` content
+3. Create the following files and copy the code:
+   - `Config.gs`
+   - `Code.gs`
+   - `ApiService.gs`
+   - `Utils.gs`
+4. Update the `appsscript.json` file (click the gear icon ⚙️ to access it)
+
+### 3. Configure the Script
+
+In `Config.gs`, update the following:
+
+```javascript
+// Set environment (BETA or PROD)
+const ENVIRONMENT = 'PROD';
+
+// Set dry run mode (true for testing, false for actual execution)
+const DRY_RUN = true;
+
+// Add your bearer token
+const BEARER_TOKEN = 'your-bearer-token-here';
+
+// Update sheet name if different
+const INPUT_SHEET_NAME = 'Sheet1';
+```
+
+### 4. Authorize the Script
+
+1. Save the script
+2. Refresh your Google Sheet
+3. You'll see a new menu: **MLO Processing**
+4. Click **MLO Processing > Process All Rows**
+5. Authorize the script when prompted
+
+## Usage
+
+### Processing Profiles
+
+1. Fill in your MLO data in the input sheet
+2. Go to **MLO Processing > Process All Rows**
+3. The script will:
+   - Look up each profile by email
+   - Create new profiles if they don't exist
+   - Update existing profiles if data has changed
+   - Skip profiles with no changes
+   - Log all operations to the "Log" sheet
+   - Update the "Result of last update" column
+
+### Understanding Results
+
+The "Result of last update" column will show:
+- `added` - New profile created
+- `updated: field1, field2, ...` - Profile updated with changed fields
+- `no update needed` - Profile exists and matches
+- `error: message` - Error occurred during processing
+- `[DRY RUN] added` - Would create (dry run mode)
+- `[DRY RUN] updated: field1, field2` - Would update (dry run mode)
+
+### Dry Run Mode
+
+**Always test with DRY_RUN = true first!**
+
+When `DRY_RUN = true`:
+- Profile lookups are performed normally
+- CREATE and UPDATE operations are simulated but not executed
+- All operations are logged with "[DRY RUN]" or "Simulated" in the action
+- Results show what would happen without making actual changes
+
+### Environment Switching
+
+To switch between BETA and PROD:
+
+```javascript
+const ENVIRONMENT = 'PROD'; // or 'BETA'
+```
+
+The URLs will automatically update:
+- **BETA**: `https://homestory-connect.beta-api.homestoryrewards.com/api/v1.0`
+- **PROD**: `https://homestory-connect.api.homestoryrewards.com/api/v1.0`
+
+## API Integration
+
+### Endpoints
+
+- **GET Profile**: `GET /partner/{partnerId}/profiles/{email}`
+- **CREATE Profile**: `POST /partner/{partnerId}/profiles`
+- **UPDATE Profile**: `PUT /partner/{partnerId}/profiles/{aggregateId}`
+
+### Authentication
+
+The script uses Bearer token authentication. Set your token in `Config.gs`:
+
+```javascript
+const BEARER_TOKEN = 'your-token-here';
+```
+
+### Profile Payload Structure
+
+```json
+{
+  "role": "MLO",
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@example.com",
+  "phone": "+15551234567",
+  "phones": [
+    {
+      "phoneType": "office",
+      "phoneNumber": "+15551234567"
+    }
+  ],
+  "data": {
+    "nmlsid": "123456",
+    "mloStatus": "active",
+    "lm": {
+      "firstName": "Jane",
+      "lastName": "Manager",
+      "email": "jane.manager@example.com"
+    },
+    "slm": {
+      "firstName": "Bob",
+      "lastName": "Senior",
+      "email": "bob.senior@example.com"
+    }
+  }
+}
+```
+
+## Logging
+
+All operations are logged to the "Log" sheet with:
+- **Timestamp**: When the operation occurred
+- **LO Email**: Email of the profile being processed
+- **Action**: Lookup, Create, Update, Skip, Error
+- **Status**: Success, Failed, In Progress
+- **Details**: Additional information about the operation
+- **Row Number**: Source row in the input sheet
+
+## Phone Number Normalization
+
+Phone numbers are automatically normalized to `+1XXXXXXXXXX` format:
+- Input: `(555) 123-4567` → Output: `+15551234567`
+- Input: `555-123-4567` → Output: `+15551234567`
+- Input: `15551234567` → Output: `+15551234567`
+- Input: `5551234567` → Output: `+15551234567`
+
+## Error Handling
+
+The script handles:
+- **401 Unauthorized**: Invalid or expired bearer token
+- **403 Forbidden**: Permission denied
+- **404 Not Found**: Profile doesn't exist (triggers create)
+- **Invalid phone numbers**: Detailed error messages
+- **Missing required fields**: Clear validation errors
+- **API errors**: Full error details in logs
+
+## Best Practices
+
+1. **Always test with DRY_RUN = true first**
+2. **Review the Log sheet** after each run
+3. **Start with a small batch** (5-10 rows) to verify behavior
+4. **Keep your bearer token secure** - never commit it to version control
+5. **Monitor rate limits** - the script includes a 100ms delay between rows
+6. **Validate data** before processing - ensure emails, phone numbers, and mlo_status are correct
+7. **Back up your data** before running bulk updates
+
+## Troubleshooting
+
+### "Column not found" error
+- Ensure all column names in your sheet match exactly (case-sensitive)
+- Check the `COLUMNS` object in `Config.gs`
+
+### "Unauthorized" error
+- Verify your bearer token is valid
+- Check if the token has expired
+- Ensure you have the correct permissions
+
+### Phone number errors
+- Phone numbers must be 10 digits (US format)
+- Leading 1 is optional
+- All formatting characters are automatically removed
+
+### No updates happening in DRY_RUN mode
+- This is expected! DRY_RUN mode simulates operations
+- Set `DRY_RUN = false` to execute actual operations
+
+## Support
+
+For API-related questions, contact your HomeStory Rewards API administrator.
+
+For Google Apps Script questions, refer to the [Apps Script documentation](https://developers.google.com/apps-script).
+
+## Version History
+
+- **v1.0** - Initial release with full CRUD operations, dry run mode, and comprehensive logging
